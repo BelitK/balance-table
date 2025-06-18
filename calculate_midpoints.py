@@ -4,8 +4,7 @@ from camera import detect_white_circles_generator
 
 def get_outermost_circle(circles, cam_center):
     if not circles:
-        return []
-    # Find the circle whose center is farthest from the camera center
+        return None
     max_dist = -1
     outermost = None
     for (x, y, r) in circles:
@@ -13,7 +12,21 @@ def get_outermost_circle(circles, cam_center):
         if dist > max_dist:
             max_dist = dist
             outermost = (x, y, r)
-    return [outermost] if outermost else []
+    return outermost
+
+def get_ball_position():
+    cap = cv2.VideoCapture(0)
+    gen = detect_white_circles_generator(cap)
+    ret, frame = cap.read()
+    if not ret:
+        cap.release()
+        return None
+    h, w = frame.shape[:2]
+    cam_center = (w // 2, h // 2)
+    circle_list = next(gen)
+    ball = get_outermost_circle(circle_list, cam_center)
+    cap.release()
+    return ball
 
 def get_relative_position(x, y, cam_center):
     cx, cy = cam_center

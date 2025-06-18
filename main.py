@@ -1,6 +1,7 @@
 import numpy as np
 import serial
 from simple_pid import PID
+from calculate_midpoints import get_ball_position
 
 # Arduino seri port bağlantısı
 arduino = serial.Serial('COM3', 9600, timeout=1)
@@ -40,12 +41,6 @@ previous_pwm_d = default_pwm
 def send_motor_commands(pwm_a, pwm_b, pwm_c, pwm_d):
     command = f"A:{pwm_a},B:{pwm_b},C:{pwm_c},D:{pwm_d}\n"
     arduino.write(command.encode())
-
-# Harici bir kaynaktan top pozisyonunu alma (örnek fonksiyon)
-# Bu fonksiyonu, gerçek top pozisyonunu döndüren bir işlem veya modül ile değiştirin
-def get_ball_position():
-    # Yer tutucu: top yoksa None, tespit edildiyse (x, y, r) döndür
-    return None
 
 try:
     while True:
