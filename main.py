@@ -17,8 +17,9 @@ pixels_per_cm_y = 480 / table_height_cm  # 19.2 px/cm
 # PWM başlangıç değeri
 default_pwm = 75
 
-# Görüntü merkezi koordinatları (px)
+# Görüntü merkezi koordinatları (px) 
 center_x, center_y = 640 // 2, 480 // 2
+
 
 # Hedef konum başlangıcı (px)
 target_x, target_y = center_x, center_y
