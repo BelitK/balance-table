@@ -4,6 +4,18 @@ import serial
 import time
 from simple_pid import PID
 from camera import detect_white_circles_generator
+import threading
+
+def read_arduino_serial(arduino):
+    while True:
+        try:
+            if arduino.in_waiting > 0:
+                line = arduino.readline().decode(errors='ignore').strip()
+                if line:
+                    print(f"[ARDUINO] {line}")
+        except Exception as e:
+            print(f"[Serial Read Error] {e}")
+            break
 
 detect_cam = 0  # Change to 1 if needed
 arduino = serial.Serial('COM3', 9600, timeout=1)
@@ -59,6 +71,9 @@ def select_target(event, x, y, flags, param):
 
 cv2.namedWindow("Frame")
 cv2.setMouseCallback("Frame", select_target)
+
+serial_thread = threading.Thread(target=read_arduino_serial, args=(arduino,), daemon=True)
+serial_thread.start()
 
 try:
     while True:

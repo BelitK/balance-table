@@ -54,12 +54,17 @@ void loop() {
   // Seri porttan veri gelirse işle
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n'); // Gelen veriyi oku
-    if (input.startsWith("A:") && input.indexOf(",B:") > 0) {
+    // Tüm alanların varlığını kontrol et
+    int idxA = input.indexOf("A:");
+    int idxB = input.indexOf(",B:");
+    int idxC = input.indexOf(",C:");
+    int idxD = input.indexOf(",D:");
+    if (idxA == 0 && idxB > 0 && idxC > 0 && idxD > 0) {
       // Gelen veriyi ayrıştır
-      int pwmA = input.substring(input.indexOf("A:") + 2, input.indexOf(",B:")).toInt();
-      int pwmB = input.substring(input.indexOf("B:") + 2, input.indexOf(",C:")).toInt();
-      int pwmC = input.substring(input.indexOf("C:") + 2, input.indexOf(",D:")).toInt();
-      int pwmD = input.substring(input.indexOf("D:") + 2).toInt();
+      int pwmA = input.substring(idxA + 2, idxB).toInt();
+      int pwmB = input.substring(idxB + 3, idxC).toInt();
+      int pwmC = input.substring(idxC + 3, idxD).toInt();
+      int pwmD = input.substring(idxD + 3).toInt();
 
       // PWM değerlerini sınırla
       pwmA = constrain(pwmA, minSpeed, maxSpeed);
@@ -78,6 +83,10 @@ void loop() {
       Serial.print(", Motor B PWM: "); Serial.print(pwmB);
       Serial.print(", Motor C PWM: "); Serial.print(pwmC);
       Serial.print(", Motor D PWM: "); Serial.println(pwmD);
-}
- }
+    } else {
+      // Hatalı komut gelirse buffer'ı temizle
+      Serial.println("Hatalı komut alındı, buffer temizleniyor.");
+      while (Serial.available() > 0) Serial.read();
+    }
   }
+}
