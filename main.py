@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import serial
+import time
 from simple_pid import PID
 from camera import detect_white_circles_generator
 
@@ -47,6 +48,7 @@ gen = detect_white_circles_generator(cap)
 def send_motor_commands(pwm_a, pwm_b, pwm_c, pwm_d):
     command = f"A:{pwm_a},B:{pwm_b},C:{pwm_c},D:{pwm_d}\n"
     arduino.write(command.encode())
+    time.sleep(0.01)  # Küçük gecikme, tampon taşmasını önlemek için
 
 # Hedef seçimini değiştirme
 def select_target(event, x, y, flags, param):
@@ -83,10 +85,10 @@ try:
             pwm_d = int(default_pwm - pwm_delta_y - pwm_delta_x)
 
             # PWM sınırlarını uygula
-            pwm_a = max(75, min(255, pwm_a))
-            pwm_b = max(75, min(255, pwm_b))
-            pwm_c = max(75, min(255, pwm_c))
-            pwm_d = max(75, min(255, pwm_d))
+            pwm_a = max(0, min(255, pwm_a))
+            pwm_b = max(0, min(255, pwm_b))
+            pwm_c = max(0, min(255, pwm_c))
+            pwm_d = max(0, min(255, pwm_d))
 
             # Düşük geçiren filtre uygulama
             pwm_a = int(alpha * pwm_a + (1 - alpha) * previous_pwm_a)
