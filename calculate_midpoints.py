@@ -4,7 +4,8 @@ from camera import detect_white_circles_generator
 
 def get_outermost_circle(circles, cam_center):
     if not circles:
-        return None
+        return []
+    # Find the circle whose center is farthest from the camera center
     max_dist = -1
     outermost = None
     for (x, y, r) in circles:
@@ -12,21 +13,7 @@ def get_outermost_circle(circles, cam_center):
         if dist > max_dist:
             max_dist = dist
             outermost = (x, y, r)
-    return outermost
-
-def get_ball_position():
-    cap = cv2.VideoCapture(0)
-    gen = detect_white_circles_generator(cap)
-    ret, frame = cap.read()
-    if not ret:
-        cap.release()
-        return None
-    h, w = frame.shape[:2]
-    cam_center = (w // 2, h // 2)
-    circle_list = next(gen)
-    ball = get_outermost_circle(circle_list, cam_center)
-    cap.release()
-    return ball
+    return [outermost] if outermost else []
 
 def get_relative_position(x, y, cam_center):
     cx, cy = cam_center
@@ -58,8 +45,15 @@ def get_motor_commands(rel_x, rel_y, threshold=20):
 
 def main():
     cap = cv2.VideoCapture(0)
-    gen = detect_white_circles_generator(cap)
+    if not cap.isOpened():
+        print("Error: Could not open camera.")
+        return
     ret, frame = cap.read()
+    if not ret or frame is None:
+        print("Error: Could not read from camera.")
+        cap.release()
+        return
+    gen = detect_white_circles_generator(cap)
     h, w = frame.shape[:2]
     cam_center = [w // 2, h // 2]
     def set_center(event, x, y, flags, param):
@@ -71,7 +65,8 @@ def main():
     while True:
         circle_list = next(gen)
         ret, frame = cap.read()
-        if not ret:
+        if not ret or frame is None:
+            print("Camera disconnected or frame not received.")
             break
         h, w = frame.shape[:2]
         # Only keep the outermost circle
