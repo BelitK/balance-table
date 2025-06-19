@@ -20,7 +20,7 @@ pixels_per_cm_x = 640 / table_width_cm  # 35.56 px/cm
 pixels_per_cm_y = 480 / table_height_cm  # 19.2 px/cm
 
 # PWM başlangıç değeri
-default_pwm = 75
+default_pwm = 100  # Increased from 75
 
 # Görüntü merkezi koordinatları (px)
 center_x, center_y = 640 // 2, 480 // 2
@@ -29,10 +29,10 @@ center_x, center_y = 640 // 2, 480 // 2
 target_x, target_y = center_x, center_y
 
 # PID kontrolör tanımları
-pid_x = PID(0.6, 0.1, 0.15, setpoint=0)
-pid_y = PID(0.6, 0.1, 0.15, setpoint=0)
-pid_x.output_limits = (-50, 50)
-pid_y.output_limits = (-50, 50)
+pid_x = PID(0.2, 0.01, 15.5, setpoint=0)
+pid_y = PID(0.2, 0.01, 15.5, setpoint=0)
+pid_x.output_limits = (-80, 80)
+pid_y.output_limits = (-80, 80)
 
 alpha = 0.9
 
@@ -96,6 +96,7 @@ try:
             pwm_c = int(alpha * pwm_c + (1 - alpha) * previous_pwm_c)
             pwm_d = int(alpha * pwm_d + (1 - alpha) * previous_pwm_d)
             # Clamp after all filtering
+            # When clamping, keep min at 75 for safety, or lower if you want more range
             pwm_a = max(75, min(255, pwm_a))
             pwm_b = max(75, min(255, pwm_b))
             pwm_c = max(75, min(255, pwm_c))
