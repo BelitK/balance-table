@@ -1,8 +1,10 @@
+# Motor mapping: A=left-bottom, B=left-up, C=right-up, D=right-bottom
 import cv2
 import numpy as np
 import serial
 from simple_pid import PID
 import time
+import threading
 
 arduino = serial.Serial('COM3', 9600, timeout=1)
 cap = cv2.VideoCapture(1)
@@ -56,6 +58,19 @@ def select_target(event, x, y, flags, param):
 cv2.namedWindow("Frame")
 cv2.setMouseCallback("Frame", select_target)
 
+def read_arduino_serial():
+    while True:
+        try:
+            if arduino.in_waiting:
+                line = arduino.readline().decode(errors='ignore').strip()
+                if line:
+                    print(f"[ARDUINO] {line}")
+        except Exception:
+            break
+
+serial_thread = threading.Thread(target=read_arduino_serial, daemon=True)
+serial_thread.start()
+
 try:
     while True:
         ret, frame = cap.read()
@@ -74,38 +89,62 @@ try:
             if cv2.contourArea(largest_contour) > MIN_CONTOUR_AREA:
                 (x, y), radius = cv2.minEnclosingCircle(largest_contour)
                 current_x, current_y = int(x), int(y)
-                delta_x = (target_x - current_x) / pixels_per_cm_x
-                delta_y = (target_y - current_y) / pixels_per_cm_y
-                if abs(delta_x) < deadzone_cm:
-                    delta_x = 0
-                if abs(delta_y) < deadzone_cm:
-                    delta_y = 0
-                distance = np.hypot(delta_x, delta_y)
-                min_alpha = 0.6
-                max_alpha = 0.95
-                max_distance = 5.0
-                alpha = min_alpha + (max_alpha - min_alpha) * min(distance / max_distance, 1.0)
-                pwm_delta_x = pid_x(delta_x)
-                pwm_delta_y = pid_y(delta_y)
-                target_pwm_a = default_pwm + pwm_delta_y + pwm_delta_x
-                target_pwm_b = default_pwm + pwm_delta_y - pwm_delta_x
-                target_pwm_c = default_pwm - pwm_delta_y + pwm_delta_x
-                target_pwm_d = default_pwm - pwm_delta_y - pwm_delta_x
-                pwm_a = alpha * previous_pwm_a + (1 - alpha) * target_pwm_a
-                pwm_b = alpha * previous_pwm_b + (1 - alpha) * target_pwm_b
-                pwm_c = alpha * previous_pwm_c + (1 - alpha) * target_pwm_c
-                pwm_d = alpha * previous_pwm_d + (1 - alpha) * target_pwm_d
-                pwm_a = int(max(75, min(255, pwm_a)))
-                pwm_b = int(max(75, min(255, pwm_b)))
-                pwm_c = int(max(75, min(255, pwm_c)))
-                pwm_d = int(max(75, min(255, pwm_d)))
-                previous_pwm_a, previous_pwm_b = pwm_a, pwm_b
-                previous_pwm_c, previous_pwm_d = pwm_c, pwm_d
+                dx = current_x - center_x
+                dy = current_y - center_y
+                print(f"Ball: ({current_x},{current_y})  dx: {dx}  dy: {dy}")
+                sector_pwm = 180
+                rest_pwm = 75
+                if abs(dx) < 10 and abs(dy) < 10:
+                    pwm_a = pwm_b = pwm_c = pwm_d = rest_pwm
+                    print("Sector: Center")
+                elif dx < 0 and dy > 0:
+                    pwm_a = sector_pwm
+                    pwm_b = rest_pwm
+                    pwm_c = rest_pwm
+                    pwm_d = rest_pwm
+                    print("Sector: Left-Bottom (A)")
+                elif dx < 0 and dy < 0:
+                    pwm_b = sector_pwm
+                    pwm_a = rest_pwm
+                    pwm_c = rest_pwm
+                    pwm_d = rest_pwm
+                    print("Sector: Left-Up (B)")
+                elif dx > 0 and dy < 0:
+                    pwm_c = sector_pwm
+                    pwm_a = rest_pwm
+                    pwm_b = rest_pwm
+                    pwm_d = rest_pwm
+                    print("Sector: Right-Up (C)")
+                elif dx > 0 and dy > 0:
+                    pwm_d = sector_pwm
+                    pwm_a = rest_pwm
+                    pwm_b = rest_pwm
+                    pwm_c = rest_pwm
+                    print("Sector: Right-Bottom (D)")
+                elif dx < 0:
+                    pwm_a = pwm_b = sector_pwm
+                    pwm_c = pwm_d = rest_pwm
+                    print("Sector: Left")
+                elif dx > 0:
+                    pwm_c = pwm_d = sector_pwm
+                    pwm_a = pwm_b = rest_pwm
+                    print("Sector: Right")
+                elif dy < 0:
+                    pwm_b = pwm_c = sector_pwm
+                    pwm_a = pwm_d = rest_pwm
+                    print("Sector: Up")
+                elif dy > 0:
+                    pwm_a = pwm_d = sector_pwm
+                    pwm_b = pwm_c = rest_pwm
+                    print("Sector: Down")
+                print(f"PWM: A={pwm_a} B={pwm_b} C={pwm_c} D={pwm_d}")
                 send_motor_commands(pwm_a, pwm_b, pwm_c, pwm_d)
-                cv2.circle(frame, (target_x, target_y), 5, (0, 255, 0), -1)
+                cv2.circle(frame, (center_x, center_y), 5, (0, 255, 0), -1)
                 cv2.circle(frame, (current_x, current_y), int(radius), (255, 0, 0), 2)
                 ball_found = True
                 lost_ball_counter = 0
+        else:
+            print("Ball not found")
         if not ball_found:
             lost_ball_counter += 1
             if lost_ball_counter >= lost_ball_max_frames:
